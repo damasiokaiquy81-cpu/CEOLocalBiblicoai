@@ -1,4 +1,4 @@
-// Baixa uma "foto" do mapa (satélite, nomes atuais e relevo) para a pasta mapa/,
+// Baixa uma "foto" do mapa (satélite e nomes atuais) para a pasta mapa/,
 // para o site não depender desses servidores nem baixar tudo ao vivo.
 // Rode de vez em quando para atualizar e faça o commit da pasta mapa/:
 //
@@ -18,7 +18,6 @@ const TEMP = path.join(RAIZ, "mapa.novo");
 const CAMADAS = {
   sat: { url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", ext: "jpg" },
   nomes: { url: "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}", ext: "png" },
-  relevo: { url: "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png", ext: "png" },
 };
 
 // [oeste, sul, leste, norte] — REGIAO é o maxBounds do app.js
@@ -48,12 +47,9 @@ function arredores(set, z, raio) {
 }
 
 // Quais tiles cada camada baixa
-const planos = {
-  sat: new Set(), nomes: new Set(), relevo: new Set(),
-};
+const planos = { sat: new Set(), nomes: new Set() };
 for (let z = 5; z <= 9; z++) Object.values(planos).forEach((s) => caixa(s, REGIAO, z));
-[10, 11].forEach((z) => { caixa(planos.sat, MIOLO, z); caixa(planos.nomes, MIOLO, z); });
-caixa(planos.relevo, MIOLO, 10); // relevo para no zoom 10 (o mapa amplia daí para cima)
+[10, 11].forEach((z) => Object.values(planos).forEach((s) => caixa(s, MIOLO, z)));
 arredores(planos.sat, 12, 2);
 arredores(planos.sat, 13, 1);
 arredores(planos.nomes, 12, 1);

@@ -22,7 +22,7 @@
   --radius: 10px;
   --serif: Georgia, "Times New Roman", serif;
   --sans: "Inter", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
-  --glass: rgba(22, 22, 25, .82);
+  --glass: rgba(22, 22, 25, .92); /* sem desfoque por trás (caro sobre o mapa em movimento), então mais opaco */
   --split: 50%;
 }
 
@@ -58,16 +58,13 @@ button, input { font: inherit; color: inherit; letter-spacing: inherit; }
   background: var(--glass);
   border: 1px solid var(--border);
   border-radius: 12px;
-  backdrop-filter: blur(14px) saturate(1.2);
-  -webkit-backdrop-filter: blur(14px) saturate(1.2);
-  box-shadow: 0 18px 50px rgba(0, 0, 0, .45);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .4);
 }
 
 /* ---------- Mapas ---------- */
 .maps { position: fixed; inset: 0; }
 .map { position: absolute; inset: 0; }
 #mapAntes { clip-path: inset(0 calc(100% - var(--split)) 0 0); z-index: 2; }
-#mapAntes .maplibregl-canvas { filter: sepia(.38) saturate(.92) contrast(1.06) brightness(.97); }
 body[data-mode="antes"] #mapAntes { clip-path: none; }
 body[data-mode="hoje"] #mapAntes { visibility: hidden; }
 
@@ -128,7 +125,7 @@ body:not([data-mode="comparar"]) .divisor { display: none; }
 .modos button[data-mode="antes"].on { color: var(--gold-2); border-color: #5b4d2c; }
 
 .acoes { display: flex; gap: 8px; }
-.acoes .btn { background: var(--glass); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+.acoes .btn { background: var(--glass); }
 .acoes .btn.primary { background: var(--gold); }
 
 /* ---------- Painel de locais ---------- */
@@ -230,7 +227,7 @@ body[data-mode="hoje"] .legenda { display: none; }
 /* Tooltip ao passar sobre um local */
 .maplibregl-popup.dica .maplibregl-popup-content {
   background: var(--glass); color: var(--text); border: 1px solid var(--border-2); border-radius: 10px;
-  padding: 10px 12px; box-shadow: 0 14px 40px rgba(0,0,0,.5); backdrop-filter: blur(12px); max-width: 260px;
+  padding: 10px 12px; box-shadow: 0 14px 40px rgba(0,0,0,.5); max-width: 260px;
 }
 .maplibregl-popup.dica .maplibregl-popup-tip { display: none; }
 .dica .rot { font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }

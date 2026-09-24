@@ -1,12 +1,16 @@
-/* CEOLocalBiblico.ai — dois mapas 3D sincronizados: época de Jesus (em cima, recortado) × hoje (embaixo). */
+/* CEOLocalBiblico.ai — dois mapas sincronizados: época de Jesus (em cima, recortado) × hoje (embaixo).
+   Versão leve: sem terreno 3D nem céu; o relevo aparece só como sombreado e a inclinação é pequena. */
 
 const $ = (s) => document.querySelector(s);
 const pequeno = () => matchMedia("(max-width: 820px)").matches;
 
+const INCLINACAO = 30; // visão geral
+const INCLINACAO_LOCAL = 40; // ao voar para um local
+
 const VISAO_GERAL = () => ({
   center: pequeno() ? [35.42, 32.05] : [35.50, 32.12],
   zoom: pequeno() ? 6.9 : 7.75,
-  pitch: 55,
+  pitch: INCLINACAO,
   bearing: -14,
 });
 
@@ -23,11 +27,6 @@ const SAT = {
   tiles: [LOCAL ? "mapa/sat/{z}/{x}/{y}.jpg" : "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"],
   attribution: "Imagens © Esri, Maxar, Earthstar Geographics",
 };
-const DEM = () => ({
-  type: "raster-dem", encoding: "terrarium", tileSize: 256, maxzoom: LOCAL ? 10 : 13,
-  tiles: [LOCAL ? "mapa/relevo/{z}/{x}/{y}.png" : "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png"],
-  attribution: "Relevo: Terrain Tiles (AWS Open Data / SRTM)",
-});
 
 const fechar = (anel) => [...anel, anel[0]];
 const geoRegioes = {
@@ -50,23 +49,18 @@ function estilo(tipo) {
   const antes = tipo === "antes";
   const s = {
     version: 8,
-    sources: { sat: SAT, dem: DEM(), relevo: DEM() },
+    sources: { sat: SAT },
     layers: [
       { id: "fundo", type: "background", paint: { "background-color": "#121214" } },
       { id: "sat", type: "raster", source: "sat", paint: antes
-          ? { "raster-saturation": -0.45, "raster-contrast": 0.12, "raster-brightness-max": 0.92, "raster-hue-rotate": 8, "raster-fade-duration": 250 }
-          : { "raster-saturation": 0.08, "raster-contrast": 0.06, "raster-fade-duration": 250 } },
-      { id: "relevo", type: "hillshade", source: "relevo", paint: {
-          "hillshade-exaggeration": antes ? 0.38 : 0.22,
-          "hillshade-shadow-color": antes ? "#2a1d0c" : "#101418",
-          "hillshade-highlight-color": antes ? "#fff1cc" : "#ffffff",
-          "hillshade-accent-color": "#000000",
-          "hillshade-illumination-direction": 315 } },
+          ? { "raster-saturation": -0.6, "raster-contrast": 0.15, "raster-brightness-max": 0.9, "raster-fade-duration": 0 }
+          : { "raster-saturation": 0.08, "raster-contrast": 0.06, "raster-fade-duration": 0 } },
     ],
-    terrain: { source: "dem", exaggeration: 1.7 },
   };
 
   if (antes) {
+    // tom envelhecido: uma camada de cor por cima (antes era um filtro CSS no canvas, caro a cada quadro)
+    s.layers.push({ id: "tom", type: "background", paint: { "background-color": "#8a6630", "background-opacity": 0.2 } });
     s.sources.regioes = { type: "geojson", data: geoRegioes, promoteId: "id" };
     s.sources.aguas = { type: "geojson", data: geoAguas };
     s.sources.estradas = { type: "geojson", data: geoEstradas };
@@ -101,18 +95,13 @@ function criarMapa(id, tipo) {
     style: estilo(tipo),
     ...VISAO_GERAL(),
     zoom: 6.2, pitch: 0, bearing: 0,
-    maxPitch: 80,
+    maxPitch: 50,
     minZoom: 5.5,
     maxBounds: [[32.5, 29.3], [38.3, 34.9]],
     attributionControl: false,
-    fadeDuration: 150,
-  });
-  m.once("style.load", () => {
-    try {
-      m.setSky(tipo === "antes"
-        ? { "sky-color": "#2b2416", "horizon-color": "#d9b77a", "fog-color": "#8c7650", "sky-horizon-blend": 0.6, "horizon-fog-blend": 0.35, "fog-ground-blend": 0.7, "atmosphere-blend": 0.8 }
-        : { "sky-color": "#1c3150", "horizon-color": "#b9d0e6", "fog-color": "#8aa2ba", "sky-horizon-blend": 0.6, "horizon-fog-blend": 0.35, "fog-ground-blend": 0.7, "atmosphere-blend": 0.8 });
-    } catch (e) { /* céu é só enfeite */ }
+    fadeDuration: 0,
+    // em celular com tela 3x, desenhar em 1,5x já fica nítido e é 4x menos trabalho
+    pixelRatio: Math.min(devicePixelRatio || 1, 1.5),
   });
   return m;
 }
@@ -136,14 +125,17 @@ if (LOCAL) {
 }
 
 // ---------- Sincronia entre os dois mapas ----------
+// O mapa escondido (modos "Época de Jesus" ou "Hoje") não acompanha: assim ele não redesenha à toa.
+// Ao trocar de modo ele é alinhado de uma vez (ver setModo).
 let sincronizando = false;
+const visivel = (m) => document.body.dataset.mode === "comparar" || m === mapaAtivo();
+function alinhar(de, para) {
+  sincronizando = true;
+  para.jumpTo({ center: de.getCenter(), zoom: de.getZoom(), bearing: de.getBearing(), pitch: de.getPitch() });
+  sincronizando = false;
+}
 function sincronizar(de, para) {
-  de.on("move", () => {
-    if (sincronizando) return;
-    sincronizando = true;
-    para.jumpTo({ center: de.getCenter(), zoom: de.getZoom(), bearing: de.getBearing(), pitch: de.getPitch() });
-    sincronizando = false;
-  });
+  de.on("move", () => { if (!sincronizando && visivel(para)) alinhar(de, para); });
 }
 sincronizar(mapHoje, mapAntes);
 sincronizar(mapAntes, mapHoje);
@@ -176,7 +168,9 @@ function setSplit(p) {
 
 // ---------- Modos ----------
 function setModo(modo) {
+  const antes = mapaAtivo();
   document.body.dataset.mode = modo;
+  if (mapaAtivo() !== antes || modo === "comparar") alinhar(antes, antes === mapHoje ? mapAntes : mapHoje);
   document.querySelectorAll(".modos button").forEach((b) => b.classList.toggle("on", b.dataset.mode === modo));
   if (modo === "comparar" && (split < 8 || split > 92)) setSplit(50);
   fecharDica();
@@ -289,7 +283,7 @@ $("#legendaLista").addEventListener("click", (e) => {
   pararTour();
   if (document.body.dataset.mode === "hoje") setModo("comparar");
   const cam = mapaAtivo().cameraForBounds(b, { padding: pequeno() ? 40 : { top: 120, bottom: 60, left: 300, right: 400 } });
-  mapaAtivo().flyTo({ ...cam, zoom: cam.zoom - 0.3, pitch: 50, bearing: -10, duration: 3000, essential: true });
+  mapaAtivo().flyTo({ ...cam, zoom: cam.zoom - 0.3, pitch: INCLINACAO, bearing: -10, duration: 3000, essential: true });
 });
 
 // ---------- Seleção de local ----------
@@ -341,7 +335,7 @@ function voarPara(l, duracao = 4200) {
   // desloca o ponto para fora do painel (embaixo em telas pequenas, à direita nas largas).
   // Usa offset e não padding: com padding o centro dos dois mapas deixaria de coincidir.
   const offset = pequeno() ? [0, -innerHeight * 0.2] : [-170, 30];
-  m.flyTo({ center: l.c, zoom: 12.2, pitch: 64, bearing: Math.max(-60, Math.min(60, giro)), duration: duracao, curve: 1.6, offset, essential: true });
+  m.flyTo({ center: l.c, zoom: 12.2, pitch: INCLINACAO_LOCAL, bearing: Math.max(-60, Math.min(60, giro)), duration: duracao, curve: 1.6, offset, essential: true });
 }
 
 function visaoGeral(duracao = 3000) {
