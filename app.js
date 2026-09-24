@@ -15,14 +15,17 @@ const IMPORTANTES = new Set(["jerusalem", "belem", "nazare", "cafarnaum", "jeric
   "tiro", "sidom", "cesareia", "damasco", "gaza", "jope", "tiberiades", "gerasa"]);
 
 // ---------- Fontes de dados comuns ----------
+// Com a pasta mapa/ (gerada por ferramentas/atualizar-mapa.mjs) tudo vem de arquivos locais;
+// sem ela, cai nos servidores originais.
+const LOCAL = typeof MAPA_OFFLINE !== "undefined";
 const SAT = {
-  type: "raster", tileSize: 256, maxzoom: 19,
-  tiles: ["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"],
+  type: "raster", tileSize: 256, maxzoom: LOCAL ? 13 : 19,
+  tiles: [LOCAL ? "mapa/sat/{z}/{x}/{y}.jpg" : "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"],
   attribution: "Imagens © Esri, Maxar, Earthstar Geographics",
 };
 const DEM = () => ({
-  type: "raster-dem", encoding: "terrarium", tileSize: 256, maxzoom: 13,
-  tiles: ["https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png"],
+  type: "raster-dem", encoding: "terrarium", tileSize: 256, maxzoom: LOCAL ? 10 : 13,
+  tiles: [LOCAL ? "mapa/relevo/{z}/{x}/{y}.png" : "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png"],
   attribution: "Relevo: Terrain Tiles (AWS Open Data / SRTM)",
 });
 
@@ -83,8 +86,8 @@ function estilo(tipo) {
     );
   } else {
     s.sources.nomes = {
-      type: "raster", tileSize: 256, maxzoom: 19,
-      tiles: ["https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}"],
+      type: "raster", tileSize: 256, maxzoom: LOCAL ? 12 : 19,
+      tiles: [LOCAL ? "mapa/nomes/{z}/{x}/{y}.png" : "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}"],
       attribution: "Fronteiras e nomes © Esri",
     };
     s.layers.push({ id: "nomes", type: "raster", source: "nomes", paint: { "raster-opacity": 0.9 } });
@@ -124,6 +127,13 @@ mapHoje.addControl(new maplibregl.AttributionControl({
 // os créditos começam recolhidos (no celular o MapLibre os abre por cima do mapa); o "i" abre
 mapHoje.once("load", () => document.querySelectorAll(".maplibregl-compact-show").forEach((el) => el.classList.remove("maplibregl-compact-show")));
 setTimeout(() => document.querySelectorAll(".maplibregl-compact-show").forEach((el) => el.classList.remove("maplibregl-compact-show")), 1500);
+
+// ---------- Data da imagem de hoje ----------
+if (LOCAL) {
+  const [a, m, d] = MAPA_OFFLINE.atualizadoEm.split("-");
+  $("#dataHoje").textContent = `imagem de ${d}/${m}/${a}`;
+  $("#fonteData").textContent = ` Cópia guardada no próprio site, atualizada em ${d}/${m}/${a}.`;
+}
 
 // ---------- Sincronia entre os dois mapas ----------
 let sincronizando = false;
