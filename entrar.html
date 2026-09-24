@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Entrar — CEOLocalBiblico.ai</title>
+  <meta name="theme-color" content="#121214">
+  <link rel="icon" href="icons/icon32.png">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    html, body { overflow: auto; }
+    body { min-height: 100vh; min-height: 100dvh; display: grid; place-items: center; padding: 24px 16px; }
+    body::before {
+      content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+      background: radial-gradient(ellipse at 50% 20%, rgba(201, 165, 90, .10), transparent 60%);
+    }
+    .box { width: 100%; max-width: 420px; text-align: center; }
+    .logo { width: 96px; height: 96px; border-radius: 50%; box-shadow: 0 12px 34px rgba(0, 0, 0, .5); }
+    h1 { font-size: 21px; font-weight: 700; letter-spacing: -0.02em; margin: 18px 0 6px; }
+    .lead { color: var(--muted); margin: 0 0 22px; }
+    .card { text-align: left; padding: 20px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; }
+    label { display: block; color: var(--muted); font-size: 12px; margin-bottom: 6px; }
+    #key {
+      width: 100%; padding: 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg);
+      font-family: Consolas, "Cascadia Mono", monospace; font-size: 17px; letter-spacing: 1px; text-align: center; text-transform: uppercase;
+    }
+    #key:focus { outline: none; border-color: var(--gold); }
+    .btn.block { width: 100%; margin-top: 12px; padding: 11px; font-size: 14px; }
+    .btn:disabled { opacity: .6; cursor: default; }
+    .msg { margin: 12px 0 0; font-size: 13px; min-height: 1em; }
+    .msg.err { color: #f0a0a0; }
+    .msg.ok { color: #8fd49a; }
+    .note { color: var(--muted); font-size: 12px; margin: 14px 0 0; }
+    .links { margin-top: 18px; font-size: 13px; color: var(--muted); display: grid; gap: 6px; }
+    .link { color: var(--silver); text-decoration: underline; text-decoration-color: #55555c; text-underline-offset: 3px; cursor: pointer; background: none; border: 0; padding: 0; font: inherit; }
+    .link:hover { color: var(--gold-2); }
+    @media (max-width: 420px) {
+      .logo { width: 80px; height: 80px; }
+      #key { font-size: 15px; letter-spacing: .5px; }
+    }
+  </style>
+  <script src="config.js"></script>
+  <script src="acesso.js"></script>
+  <script>
+    // Já tem acesso válido neste navegador? Vai direto para o mapa.
+    if (Acesso.valido() && !new URLSearchParams(location.search).get("motivo")) location.replace("index.html");
+  </script>
+</head>
+<body>
+  <div class="box">
+    <img class="logo" src="icons/icon192.png" alt="CEOLocalBiblico.ai">
+    <h1>Entre no CEOLocalBiblico.ai</h1>
+    <p class="lead">Digite a mesma chave de acesso do CEOBiblico.ai.</p>
+
+    <form class="card" id="form">
+      <label for="key">Chave de acesso</label>
+      <input id="key" autocomplete="off" autocapitalize="characters" spellcheck="false" inputmode="text"
+             placeholder="CEOB-XXXX-XXXX-XXXX-XXXX" maxlength="24" autofocus>
+      <button class="btn primary block" id="go" type="submit">Entrar</button>
+      <p class="msg" id="msg"></p>
+      <p class="note">Funciona no computador e no celular. Neste aparelho, você só digita a chave uma vez.</p>
+    </form>
+
+    <div class="links">
+      <div id="buy" hidden>Ainda não tem uma chave? <a class="link" id="buyLink" target="_blank" rel="noopener">Comprar acesso</a></div>
+      <div id="support" hidden></div>
+    </div>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+
+    const MENSAGENS = {
+      invalida: "Chave não encontrada. Confira se digitou certo.",
+      bloqueada: "Esta chave foi bloqueada. Fale com o suporte.",
+      sem_conexao: "Sem conexão com o servidor. Confira a internet e tente de novo.",
+      offline: "Faz tempo que sua chave não é conferida. Conecte à internet e entre de novo.",
+      nao_configurado: "O site ainda não foi ligado ao servidor de licenças.",
+    };
+
+    function msg(texto, tipo = "err") {
+      $("msg").textContent = texto;
+      $("msg").className = "msg " + tipo;
+    }
+
+    // Motivo de ter caído aqui (chave bloqueada, muito tempo sem conferir)
+    const motivo = new URLSearchParams(location.search).get("motivo");
+    if (motivo && MENSAGENS[motivo]) msg(MENSAGENS[motivo]);
+
+    // Formata enquanto digita/cola: CEOB-XXXX-XXXX-XXXX-XXXX
+    $("key").addEventListener("input", () => { $("key").value = Acesso.normalizar($("key").value); });
+
+    $("form").onsubmit = async (e) => {
+      e.preventDefault();
+      const chave = $("key").value.trim();
+      if (chave.replace(/-/g, "").length < 20) return msg("A chave tem 20 letras e números (ex.: CEOB-7KQM-X2PA-9TRW-H4NZ).");
+      $("go").disabled = true;
+      $("go").textContent = "Conferindo…";
+      msg("", "");
+      const r = await Acesso.entrar(chave);
+      if (r === "ok") {
+        msg("Tudo certo! Abrindo o mapa…", "ok");
+        location.replace("index.html");
+        return;
+      }
+      msg(MENSAGENS[r] || "Não foi possível entrar agora. Tente de novo.");
+      $("go").disabled = false;
+      $("go").textContent = "Entrar";
+    };
+
+    if (CONFIG.BUY_URL) { $("buy").hidden = false; $("buyLink").href = CONFIG.BUY_URL; }
+    if (CONFIG.SUPPORT) { $("support").hidden = false; $("support").textContent = "Suporte: " + CONFIG.SUPPORT; }
+  </script>
+</body>
+</html>

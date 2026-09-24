@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CEOLocalBiblico.ai — A Terra Santa na época de Jesus e hoje</title>
+  <meta name="description" content="Mapa 3D da Terra Santa: veja lado a lado como eram as regiões na época de Jesus e como estão hoje.">
+  <meta name="theme-color" content="#121214">
+  <link rel="icon" href="icons/icon32.png">
+  <!-- Sem chave de acesso válida, vai para entrar.html antes de mostrar o mapa -->
+  <script src="config.js"></script>
+  <script src="acesso.js"></script>
+  <script>Acesso.proteger();</script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body data-mode="comparar">
+  <!-- Ícones -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-split" viewBox="0 0 24 24"><path d="M12 3v18M8 8l-4 4 4 4M16 8l4 4-4 4"/></symbol>
+    <symbol id="i-scroll" viewBox="0 0 24 24"><path d="M8 21h11a2 2 0 0 0 2-2v-2H10v2a2 2 0 1 1-4 0V5a2 2 0 0 0-2-2 2 2 0 0 0-2 2v2h4"/><path d="M19 17V5a2 2 0 0 0-2-2H4"/></symbol>
+    <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4v16l13-8z"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8 4v16M16 4v16"/></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24"><path d="M2 4h6a4 4 0 0 1 4 4v13a3 3 0 0 0-3-3H2zM22 4h-6a4 4 0 0 0-4 4v13a3 3 0 0 1 3-3h7z"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+    <symbol id="i-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+    <symbol id="i-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></symbol>
+    <symbol id="i-sair" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></symbol>
+  </svg>
+
+  <div class="maps" id="maps">
+    <div class="map" id="mapHoje"></div>
+    <div class="map" id="mapAntes"></div>
+  </div>
+
+  <div class="divisor" id="divisor">
+    <span class="tag esq glass">Época de Jesus <b>c. 30 d.C.</b></span>
+    <span class="tag dir glass">Hoje <b>2026</b></span>
+    <div class="alca" id="alca" role="slider" aria-label="Arraste para comparar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="50" tabindex="0">
+      <svg class="icon"><use href="#i-split"/></svg>
+    </div>
+  </div>
+
+  <header class="topo">
+    <div class="brand glass">
+      <img src="icons/icon128.png" alt="">
+      <div>
+        <div class="title">CEOLocalBiblico.ai</div>
+        <div class="sub">A Terra Santa na época de Jesus e hoje</div>
+      </div>
+    </div>
+
+    <nav class="modos glass" aria-label="Modo do mapa">
+      <button data-mode="comparar" class="on"><svg class="icon"><use href="#i-split"/></svg>Comparar</button>
+      <button data-mode="antes"><svg class="icon"><use href="#i-scroll"/></svg>Época de Jesus</button>
+      <button data-mode="hoje"><svg class="icon"><use href="#i-globe"/></svg>Hoje</button>
+    </nav>
+
+    <div class="acoes">
+      <button class="btn" id="btnInicio" title="Voltar à visão geral"><svg class="icon"><use href="#i-home"/></svg><span>Visão geral</span></button>
+      <button class="btn" id="btnFontes" title="De onde vêm os dados"><svg class="icon"><use href="#i-book"/></svg><span>Fontes</span></button>
+      <button class="btn primary" id="btnTour"><svg class="icon"><use href="#i-play"/></svg><span>Vida de Jesus</span></button>
+      <button class="btn" id="btnSair" title="Sair deste aparelho"><svg class="icon"><use href="#i-sair"/></svg></button>
+    </div>
+  </header>
+
+  <aside class="painel glass" id="painel">
+    <div class="detalhe" id="detalhe" hidden></div>
+    <div class="busca">
+      <div class="busca-wrap">
+        <svg class="icon"><use href="#i-search"/></svg>
+        <input id="busca" type="search" placeholder="Buscar local (ex.: Cafarnaum)" autocomplete="off">
+      </div>
+    </div>
+    <ul class="lista" id="lista"></ul>
+  </aside>
+
+  <div class="legenda glass" id="legenda">
+    <h3>Regiões · c. 30 d.C.</h3>
+    <ul id="legendaLista"></ul>
+    <div class="linha"><i class="agua"></i>Águas que mudaram desde então</div>
+    <div class="linha" style="border:0;margin-top:2px;padding-top:0"><i class="estrada"></i>Estradas principais (aprox.)</div>
+  </div>
+
+  <div class="chip-regiao glass" id="chipRegiao" hidden></div>
+
+  <dialog class="fontes" id="dlgFontes">
+    <h3>De onde vêm os dados</h3>
+    <p>O mapa mistura dados geográficos reais (relevo e satélite) com reconstruções históricas de fontes acadêmicas.</p>
+
+    <h4>Época de Jesus</h4>
+    <ul>
+      <li>Posição dos locais bíblicos: conferida com o <a href="https://www.openbible.info/geo/" target="_blank" rel="noopener">OpenBible.info Bible Geocoding</a> (CC BY 4.0). Quando há mais de uma candidata (Caná, Emaús, Betsaida), usamos a mais votada lá e o texto avisa.</li>
+      <li>Séforis e Maqueronte, que não aparecem no texto bíblico: <a href="https://pleiades.stoa.org/" target="_blank" rel="noopener">Pleiades</a>, gazetteer do mundo antigo (NYU / ISAW).</li>
+      <li>Regiões, estradas e águas antigas: <b>reconstrução aproximada</b> feita para este site, com base em Flávio Josefo (<i>Guerra dos Judeus</i>, livro III, cap. 3, que descreve os limites da Galileia, Samaria, Judeia e Pereia) e no que mostram os atlas históricos. Não é cópia de um mapa específico. Na época, essas fronteiras também não eram linhas exatas.</li>
+      <li>Descrições e referências: textos nossos, resumidos a partir dos Evangelhos e de Josefo.</li>
+    </ul>
+
+    <h4>Hoje</h4>
+    <ul>
+      <li>Imagem de satélite, fronteiras e nomes atuais: <a href="https://www.arcgis.com/home/item.html?id=10df2279f9684e4a9f6a7f08febac2a9" target="_blank" rel="noopener">Esri World Imagery</a> e World Boundaries and Places.</li>
+      <li>Relevo 3D: <a href="https://registry.opendata.aws/terrain-tiles/" target="_blank" rel="noopener">Terrain Tiles (AWS Open Data)</a>, baseado em SRTM da NASA.</li>
+      <li>Populações atuais: <a href="https://www.wikidata.org/" target="_blank" rel="noopener">Wikidata</a> (dados de 2016–2019), arredondadas.</li>
+    </ul>
+
+    <div class="rodape"><button class="btn" id="fecharFontes">Fechar</button></div>
+  </dialog>
+
+  <div class="intro" id="intro">
+    <div class="caixa">
+      <img src="icons/icon128.png" alt="">
+      <h1>A Terra Santa</h1>
+      <p>Preparando o relevo em 3D…</p>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
